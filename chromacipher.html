@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChromaCipher — Цветовой Шифратор Текста</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f3ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #090d16;
+            color: #f3f4f6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Subtle animated background gradient blobs */
+        .bg-blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.18;
+            z-index: 0;
+            pointer-events: none;
+            animation: float 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .bg-blob-1 {
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, #6366f1, #a855f7);
+        }
+
+        .bg-blob-2 {
+            bottom: -10%;
+            right: -10%;
+            width: 55vw;
+            height: 55vw;
+            background: radial-gradient(circle, #ec4899, #3b82f6);
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(50px, 30px) scale(1.08); }
+            100% { transform: translate(-30px, 50px) scale(0.95); }
+        }
+
+        /* Glassmorphism card effect */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        .glass-input {
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f8fafc;
+            transition: all 0.2s ease;
+        }
+
+        .glass-input:focus {
+            outline: none;
+            border-color: #818cf8;
+            box-shadow: 0 0 15px rgba(129, 140, 248, 0.25);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Color tile smooth transitions */
+        .color-tile {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+            position: relative;
+        }
+        .color-tile:hover {
+            transform: scale(1.15) translateY(-3px);
+            z-index: 20;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Active Tab indicator animation */
+        .tab-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tab-btn.active {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: #818cf8;
+            color: #ffffff;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+    </style>
+</head>
+<body class="relative min-h-screen text-slate-100 flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- Background Animated Blobs -->
+    <div class="bg-blob bg-blob-1"></div>
+    <div class="bg-blob bg-blob-2"></div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="relative z-10 container mx-auto px-4 py-8 max-w-6xl flex-grow flex flex-col">
+
+        <!-- HEADER -->
+        <header class="text-center mb-10">
+            <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full glass-panel text-xs uppercase tracking-widest text-indigo-400 font-semibold mb-4 border border-indigo-500/20 shadow-lg">
+                <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+                Детерминированный Цветовой Шифр
+            </div>
+            <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 mb-3">
+                ChromaCipher
+            </h1>
+            <p class="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto font-normal">
+                Превращайте английский текст в эстетичную палитру цветов и обратно. 100% точное двустороннее шифрование, генерация графики и извлечение из PNG.
+            </p>
+        </header>
+
+        <!-- NAVIGATION TABS -->
+        <nav class="flex justify-center mb-8">
+            <div class="glass-panel p-1.5 rounded-2xl flex flex-wrap justify-center gap-2 max-w-xl w-full border border-slate-700/50">
+                <button id="tab-encrypt-btn" onclick="switchTab('encrypt')" class="tab-btn active flex-1 min-w-[130px] px-5 py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 border border-transparent text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-lock text-indigo-400"></i>
+                    <span>Шифрование</span>
+                </button>
+                <button id="tab-decrypt-btn" onclick="switchTab('decrypt')" class="tab-btn flex-1 min-w-[130px] px-5 py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 border border-transparent text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-key text-pink-400"></i>
+                    <span>Расшифровка</span>
+                </button>
+                <button id="tab-palette-btn" onclick="switchTab('palette')" class="tab-btn flex-1 min-w-[130px] px-5 py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 border border-transparent text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-swatchbook text-purple-400"></i>
+                    <span>Алфавит</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- CONTENT PANELS -->
+        <main class="flex-grow">
+            
+            <!-- TAB 1: ENCRYPTION PANEL -->
+            <section id="tab-encrypt" class="tab-content grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Left: Text Input & Presets -->
+                <div class="lg:col-span-6 flex flex-col gap-6">
+                    <div class="glass-panel p-6 rounded-3xl flex flex-col h-full border border-slate-700/50">
+                        <div class="flex items-center justify-between mb-4">
+                            <label for="encrypt-input" class="text-sm font-semibold text-indigo-300 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-pen-nib"></i> Исходный текст (English)
+                            </label>
+                            <span id="char-count" class="text-xs font-mono text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700">0 символов</span>
+                        </div>
+
+                        <textarea id="encrypt-input" rows="7" 
+                            class="glass-input w-full p-4 rounded-2xl font-mono text-sm resize-none mb-4 focus:ring-2 focus:ring-indigo-500/50"
+                            placeholder="Введите ваш текст на английском языке (буквы A-Z, цифры, символы)..."
+                            oninput="updateEncryption()"></textarea>
+
+                        <!-- Preset Buttons -->
+                        <div class="mt-auto">
+                            <span class="text-xs text-slate-400 mb-2 block font-medium">Быстрые пресеты:</span>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="setPreset('Hello World!')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-indigo-600/30 hover:border-indigo-500/50 border border-slate-700 text-xs text-slate-300 transition-all">"Hello World!"</button>
+                                <button onclick="setPreset('Top Secret Code 2026')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-indigo-600/30 hover:border-indigo-500/50 border border-slate-700 text-xs text-slate-300 transition-all">"Top Secret Code 2026"</button>
+                                <button onclick="setPreset('Aesthetic Color Cipher')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-indigo-600/30 hover:border-indigo-500/50 border border-slate-700 text-xs text-slate-300 transition-all">"Aesthetic Color Cipher"</button>
+                                <button onclick="setPreset('Keep learning and building amazing things!')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-indigo-600/30 hover:border-indigo-500/50 border border-slate-700 text-xs text-slate-300 transition-all">"Inspirational Note"</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Visual Tiles & Controls -->
+                <div class="lg:col-span-6 flex flex-col gap-6">
+                    <div class="glass-panel p-6 rounded-3xl flex flex-col h-full border border-slate-700/50">
+                        
+                        <!-- Toolbar Controls -->
+                        <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
+                            <!-- Tile Shape Selector -->
+                            <div class="flex flex-col gap-1">
+                                <span class="text-xs text-slate-400 font-medium">Форма плиток</span>
+                                <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+                                    <button onclick="setTileShape('square')" id="shape-square" class="shape-btn px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-400 bg-indigo-950/60 border border-indigo-500/30">Квадрат</button>
+                                    <button onclick="setTileShape('rounded')" id="shape-rounded" class="shape-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200">Скругленный</button>
+                                    <button onclick="setTileShape('circle')" id="shape-circle" class="shape-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200">Круг</button>
+                                </div>
+                            </div>
+
+                            <!-- Tile Size Selector -->
+                            <div class="flex flex-col gap-1">
+                                <span class="text-xs text-slate-400 font-medium">Размер</span>
+                                <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+                                    <button onclick="setTileSize('sm')" id="size-sm" class="size-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400">S</button>
+                                    <button onclick="setTileSize('md')" id="size-md" class="size-btn px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-400 bg-indigo-950/60 border border-indigo-500/30">M</button>
+                                    <button onclick="setTileSize('lg')" id="size-lg" class="size-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400">L</button>
+                                </div>
+                            </div>
+
+                            <!-- Privacy / Mystery Mode Toggle -->
+                            <div class="flex flex-col gap-1">
+                                <span class="text-xs text-slate-400 font-medium">Скрыть буквы</span>
+                                <button id="privacy-toggle" onclick="togglePrivacyMode()" class="px-3 py-1 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-400 hover:text-indigo-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-eye-slash text-xs"></i>
+                                    <span id="privacy-status">Выкл</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Rendered Color Grid Box -->
+                        <div class="flex-grow min-h-[220px] max-h-[320px] overflow-y-auto bg-slate-950/50 p-5 rounded-2xl border border-slate-800/80 mb-6 flex flex-wrap content-start gap-2 items-center justify-start" id="color-tiles-container">
+                            <div class="w-full text-center py-12 text-slate-500 text-sm font-normal">
+                                <i class="fa-solid fa-palette text-2xl mb-2 text-slate-600 block"></i>
+                                Введите текст выше, чтобы увидеть генерацию цветовой матрицы
+                            </div>
+                        </div>
+
+                        <!-- Action Export Buttons -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <button onclick="copyHexSequence()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs flex items-center justify-center gap-2 border border-slate-700 transition-all active:scale-95">
+                                <i class="fa-solid fa-copy text-indigo-400"></i> Копировать HEX
+                            </button>
+                            <button onclick="copyRgbSequence()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs flex items-center justify-center gap-2 border border-slate-700 transition-all active:scale-95">
+                                <i class="fa-solid fa-code text-purple-400"></i> Копировать RGB
+                            </button>
+                            <button onclick="downloadPNG()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 transition-all active:scale-95">
+                                <i class="fa-solid fa-download"></i> Скачать PNG
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: DECRYPTION PANEL -->
+            <section id="tab-decrypt" class="tab-content hidden grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Left: Hex/RGB Text Input & Upload Image -->
+                <div class="lg:col-span-6 flex flex-col gap-6">
+                    
+                    <!-- HEX Input Card -->
+                    <div class="glass-panel p-6 rounded-3xl border border-slate-700/50">
+                        <div class="flex items-center justify-between mb-3">
+                            <label for="decrypt-hex-input" class="text-sm font-semibold text-pink-300 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-hashtag"></i> HEX / RGB Код
+                            </label>
+                            <button onclick="clearDecryptInput()" class="text-xs text-slate-400 hover:text-slate-200">Очистить</button>
+                        </div>
+                        <textarea id="decrypt-hex-input" rows="4" 
+                            class="glass-input w-full p-4 rounded-2xl font-mono text-sm resize-none mb-3 focus:ring-2 focus:ring-pink-500/50"
+                            placeholder="Вставьте последовательность HEX-кодов (например: #e6194b #3cb44b #ffe119) или RGB..."
+                            oninput="updateDecryptionFromHex()"></textarea>
+                    </div>
+
+                    <!-- Image Upload / Drag & Drop Card -->
+                    <div class="glass-panel p-6 rounded-3xl border border-slate-700/50 flex flex-col">
+                        <span class="text-sm font-semibold text-pink-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-file-image"></i> Расшифровка из PNG Изображения
+                        </span>
+                        
+                        <div id="drop-zone" 
+                            class="border-2 border-dashed border-slate-700 hover:border-pink-500/50 rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-950/30 flex flex-col items-center justify-center min-h-[140px]"
+                            onclick="document.getElementById('image-upload-input').click()"
+                            ondragover="handleDragOver(event)"
+                            onmouseleave="handleDragLeave(event)"
+                            ondrop="handleDrop(event)">
+                            <i class="fa-solid fa-cloud-arrow-up text-3xl text-pink-400/80 mb-2"></i>
+                            <p class="text-sm text-slate-300 font-medium mb-1">Перетащите сюда PNG файл или кликните</p>
+                            <p class="text-xs text-slate-500">Автоматический анализ пикселей и декодирование</p>
+                            <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/webp" class="hidden" onchange="handleImageUpload(event)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Decrypted Text Result & Interactive Keyboard -->
+                <div class="lg:col-span-6 flex flex-col gap-6">
+                    <!-- Decrypted Output -->
+                    <div class="glass-panel p-6 rounded-3xl border border-slate-700/50 flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-sm font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-unlock"></i> Расшифрованный текст
+                            </span>
+                            <button onclick="copyDecryptedText()" class="text-xs px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1">
+                                <i class="fa-solid fa-copy"></i> Скопировать
+                            </button>
+                        </div>
+                        <div id="decrypted-output" class="glass-input w-full p-4 rounded-2xl font-mono text-base min-h-[100px] break-words text-emerald-300 bg-slate-950/80">
+                            <span class="text-slate-500 italic text-sm">Текст появится здесь после ввода кодов или загрузки изображения...</span>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Color Swatch Clicker -->
+                    <div class="glass-panel p-6 rounded-3xl border border-slate-700/50 flex flex-col flex-grow">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                            Быстрая клавиатура цветов (кликните, чтобы добавить символ):
+                        </span>
+                        <div id="quick-color-keyboard" class="flex flex-wrap gap-1.5 max-h-[160px] overflow-y-auto p-2 bg-slate-950/40 rounded-xl border border-slate-800">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: ALPHABET REFERENCE PALETTE -->
+            <section id="tab-palette" class="tab-content hidden flex flex-col gap-6">
+                <div class="glass-panel p-6 rounded-3xl border border-slate-700/50">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-palette text-purple-400"></i> Алфавитная Палитра Символов
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-0.5">Все поддерживаемые Английские символы, их уникальные HEX и RGB коды</p>
+                        </div>
+                        <!-- Search Box -->
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                            <input type="text" id="palette-search" placeholder="Поиск символа или HEX..." 
+                                class="glass-input w-full pl-8 pr-4 py-2 rounded-xl text-xs"
+                                oninput="filterPalette()">
+                        </div>
+                    </div>
+
+                    <!-- Grid of Character Cards -->
+                    <div id="alphabet-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[550px] overflow-y-auto pr-1">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="mt-12 text-center text-xs text-slate-500 py-4 border-t border-slate-800/60">
+            <p>ChromaCipher &copy; 2026 — Безопасное детерминированное визуальное шифрование.</p>
+        </footer>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        /* ==========================================================================
+           1. CHARACTER SET & DETERMINISTIC CIPHER ENGINE
+           ========================================================================== */
+        
+        // Supported English charset: Upper, Lower, Numbers, Space, Common Punctuation
+        const CHAR_SET = [
+            'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
+            'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+            '0','1','2','3','4','5','6','7','8','9',
+            ' ', '.', ',', '!', '?', '-', '_', '@', '#', '$', '%', '&', '*', '(', ')', ':', ';', '\'', '"', '+', '=', '/', '<', '>'
+        ];
+
+        // Bi-directional Lookup Maps
+        const CHAR_TO_COLOR = {};
+        const HEX_TO_CHAR = {};
+        const COLOR_DATABASE = []; // Array of { char, hex, rgb: [r,g,b] }
+
+        /**
+         * Convert HSL values to exact HEX string
+         */
+        function hslToHex(h, s, l) {
+            l /= 100;
+            const a = s * Math.min(l, 1 - l) / 100;
+            const f = n => {
+                const k = (n + h / 30) % 12;
+                const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, '0');
+            };
+            return `#${f(0)}${f(8)}${f(4)}`;
+        }
+
+        /**
+         * Convert Hex string to [R, G, B]
+         */
+        function hexToRgb(hex) {
+            hex = hex.replace('#', '');
+            if (hex.length === 3) {
+                hex = hex.split('').map(c => c + c).join('');
+            }
+            const num = parseInt(hex, 16);
+            return [ (num >> 16) & 255, (num >> 8) & 255, num & 255 ];
+        }
+
+        /**
+         * Initialize deterministic Golden Angle color assignment
+         * Ensures high contrast, distinct palette for every character.
+         */
+        function initCipherPalette() {
+            const totalChars = CHAR_SET.length;
+            const goldenAngle = 137.508; // Golden angle in degrees for optimal distribution
+
+            CHAR_SET.forEach((char, index) => {
+                // Hue calculated via golden angle
+                const hue = Math.round((index * goldenAngle) % 360);
+                
+                // Varied lightness and saturation based on character index & category
+                let saturation = 75 + (index % 5) * 4; // 75% - 91%
+                let lightness = 42 + ((index * 3) % 7) * 5; // 42% - 72%
+
+                // Distinct highlight for Space
+                if (char === ' ') {
+                    saturation = 20;
+                    lightness = 25; // Dark Slate tone for Space
+                }
+
+                const hex = hslToHex(hue, saturation, lightness).toLowerCase();
+                const rgb = hexToRgb(hex);
+
+                CHAR_TO_COLOR[char] = hex;
+                HEX_TO_CHAR[hex] = char;
+                COLOR_DATABASE.push({
+                    char: char,
+                    hex: hex,
+                    rgb: rgb,
+                    displayLabel: char === ' ' ? '[Space]' : char
+                });
+            });
+        }
+
+        // Initialize immediately
+        initCipherPalette();
+
+        /* ==========================================================================
+           2. UI STATE & CONFIGURATION
+           ========================================================================== */
+        let state = {
+            activeTab: 'encrypt',
+            tileShape: 'square', // square, rounded, circle
+            tileSize: 'md',      // sm, md, lg
+            privacyMode: false   // hide hover text labels
+        };
+
+        const shapeClasses = {
+            square: 'rounded-none',
+            rounded: 'rounded-xl',
+            circle: 'rounded-full'
+        };
+
+        const sizeClasses = {
+            sm: 'w-6 h-6 text-[10px]',
+            md: 'w-10 h-10 text-xs',
+            lg: 'w-14 h-14 text-sm'
+        };
+
+        /* ==========================================================================
+           3. ENCRYPTION LOGIC & RENDERING
+           ========================================================================== */
+
+        function updateEncryption() {
+            const text = document.getElementById('encrypt-input').value;
+            const container = document.getElementById('color-tiles-container');
+            const charCountEl = document.getElementById('char-count');
+
+            charCountEl.innerText = `${text.length} символов`;
+
+            if (!text.length) {
+                container.innerHTML = `
+                    <div class="w-full text-center py-12 text-slate-500 text-sm font-normal">
+                        <i class="fa-solid fa-palette text-2xl mb-2 text-slate-600 block"></i>
+                        Введите текст выше, чтобы увидеть генерацию цветовой матрицы
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+
+            const shapeCls = shapeClasses[state.tileShape];
+            const sizeCls = sizeClasses[state.tileSize];
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const hex = CHAR_TO_COLOR[char] || '#334155'; // Fallback color for unsupported chars
+                const rgb = hexToRgb(hex);
+
+                const tile = document.createElement('div');
+                tile.className = `color-tile ${shapeCls} ${sizeCls} flex items-center justify-center font-mono font-bold cursor-pointer shadow-md select-none border border-black/20`;
+                tile.style.backgroundColor = hex;
+
+                // Color calculation for text contrast overlay inside tile
+                const brightness = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
+                const textColor = brightness > 128 ? '#0f172a' : '#ffffff';
+                tile.style.color = textColor;
+
+                if (!state.privacyMode) {
+                    tile.innerText = char === ' ' ? '␣' : char;
+                }
+
+                // Tooltip on hover
+                tile.title = `'${char === ' ' ? 'Space' : char}' | HEX: ${hex} | RGB: (${rgb.join(', ')})`;
+
+                // Click tile to copy its individual hex code
+                tile.onclick = () => {
+                    copyToClipboard(hex);
+                    showToast(`Скопирован HEX символа '${char}': ${hex}`);
+                };
+
+                container.appendChild(tile);
+            }
+        }
+
+        function setPreset(text) {
+            document.getElementById('encrypt-input').value = text;
+            updateEncryption();
+            showToast('Пресет загружен!');
+        }
+
+        function setTileShape(shape) {
+            state.tileShape = shape;
+            document.querySelectorAll('.shape-btn').forEach(btn => {
+                btn.className = 'shape-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400';
+            });
+            const activeBtn = document.getElementById(`shape-${shape}`);
+            if (activeBtn) activeBtn.className = 'shape-btn px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-400 bg-indigo-950/60 border border-indigo-500/30';
+            updateEncryption();
+        }
+
+        function setTileSize(size) {
+            state.tileSize = size;
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.className = 'size-btn px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400';
+            });
+            const activeBtn = document.getElementById(`size-${size}`);
+            if (activeBtn) activeBtn.className = 'size-btn px-2.5 py-1 rounded-lg text-xs font-medium text-indigo-400 bg-indigo-950/60 border border-indigo-500/30';
+            updateEncryption();
+        }
+
+        function togglePrivacyMode() {
+            state.privacyMode = !state.privacyMode;
+            document.getElementById('privacy-status').innerText = state.privacyMode ? 'Вкл' : 'Выкл';
+            updateEncryption();
+        }
+
+        /* ==========================================================================
+           4. EXPORT FUNCTIONS (COPY & PNG DOWNLOAD)
+           ========================================================================== */
+
+        function getHexSequence() {
+            const text = document.getElementById('encrypt-input').value;
+            if (!text) return '';
+            return text.split('').map(c => CHAR_TO_COLOR[c] || '#334155').join(' ');
+        }
+
+        function copyHexSequence() {
+            const seq = getHexSequence();
+            if (!seq) return showToast('Введите текст для шифрования!', 'warning');
+            copyToClipboard(seq);
+            showToast('HEX-последовательность скопирована!');
+        }
+
+        function copyRgbSequence() {
+            const text = document.getElementById('encrypt-input').value;
+            if (!text) return showToast('Введите текст для шифрования!', 'warning');
+            const seq = text.split('').map(c => {
+                const hex = CHAR_TO_COLOR[c] || '#334155';
+                const rgb = hexToRgb(hex);
+                return `rgb(${rgb.join(',')})`;
+            }).join(' ');
+            copyToClipboard(seq);
+            showToast('RGB-последовательность скопирована!');
+        }
+
+        /**
+         * Renders the current color cipher onto an HTML5 Canvas and exports clean PNG
+         */
+        function downloadPNG() {
+            const text = document.getElementById('encrypt-input').value;
+            if (!text) return showToast('Сначала введите текст!', 'warning');
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const tileSize = 40;
+            const gap = 6;
+            const margin = 24;
+            const maxCols = Math.min(16, Math.max(6, Math.ceil(Math.sqrt(text.length))));
+            const cols = Math.min(text.length, maxCols);
+            const rows = Math.ceil(text.length / cols);
+
+            canvas.width = cols * tileSize + (cols - 1) * gap + margin * 2;
+            canvas.height = rows * tileSize + (rows - 1) * gap + margin * 2 + 30; // Extra room for brand header
+
+            // Background fill
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Header Title in Canvas
+            ctx.fillStyle = '#818cf8';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.fillText('CHROMACIPHER ENCODED MESSAGE', margin, margin);
+
+            // Draw tiles
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const hex = CHAR_TO_COLOR[char] || '#334155';
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+
+                const x = margin + col * (tileSize + gap);
+                const y = margin + 20 + row * (tileSize + gap);
+
+                // Tile rect
+                ctx.fillStyle = hex;
+                ctx.beginPath();
+                ctx.roundRect(x, y, tileSize, tileSize, 8);
+                ctx.fill();
+            }
+
+            // Download Trigger
+            const link = document.createElement('a');
+            link.download = `chromacipher-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+
+            showToast('PNG изображение сгенерировано и скачано!');
+        }
+
+        /* ==========================================================================
+           5. DECRYPTION LOGIC & IMAGE SCANNER
+           ========================================================================== */
+
+        function updateDecryptionFromHex() {
+            const input = document.getElementById('decrypt-hex-input').value.trim();
+            const outputEl = document.getElementById('decrypted-output');
+
+            if (!input) {
+                outputEl.innerHTML = `<span class="text-slate-500 italic text-sm">Текст появится здесь после ввода кодов или загрузки изображения...</span>`;
+                return;
+            }
+
+            // Extract hex pattern or rgb pattern
+            const hexMatches = input.match(/#[a-fA-F0-9]{6}|#[a-fA-F0-9]{3}/g);
+            
+            if (hexMatches && hexMatches.length > 0) {
+                let decoded = '';
+                hexMatches.forEach(hex => {
+                    const normHex = hex.toLowerCase();
+                    if (HEX_TO_CHAR[normHex]) {
+                        decoded += HEX_TO_CHAR[normHex];
+                    } else {
+                        // Find closest Euclidean color in palette
+                        decoded += findClosestCharFromHex(normHex);
+                    }
+                });
+                outputEl.innerText = decoded;
+            } else {
+                outputEl.innerHTML = `<span class="text-rose-400 text-sm">HEX коды не обнаружены. Пожалуйста, используйте формат #RRGGBB.</span>`;
+            }
+        }
+
+        /**
+         * Find closest matching character using Euclidean RGB distance
+         */
+        function findClosestCharFromRgb(r, g, b) {
+            let minDistance = Infinity;
+            let closestChar = '?';
+
+            COLOR_DATABASE.forEach(item => {
+                const dist = Math.sqrt(
+                    Math.pow(r - item.rgb[0], 2) +
+                    Math.pow(g - item.rgb[1], 2) +
+                    Math.pow(b - item.rgb[2], 2)
+                );
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestChar = item.char;
+                }
+            });
+            return closestChar;
+        }
+
+        function findClosestCharFromHex(hex) {
+            const rgb = hexToRgb(hex);
+            return findClosestCharFromRgb(rgb[0], rgb[1], rgb[2]);
+        }
+
+        function clearDecryptInput() {
+            document.getElementById('decrypt-hex-input').value = '';
+            updateDecryptionFromHex();
+        }
+
+        function copyDecryptedText() {
+            const text = document.getElementById('decrypted-output').innerText;
+            if (!text || text.includes('Текст появится здесь')) return showToast('Нет расшифрованного текста!', 'warning');
+            copyToClipboard(text);
+            showToast('Расшифрованный текст скопирован!');
+        }
+
+        /* Drag and Drop & Image Scanning Handlers */
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('drop-zone').classList.add('border-pink-500', 'bg-pink-950/20');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            document.getElementById('drop-zone').classList.remove('border-pink-500', 'bg-pink-950/20');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('drop-zone').classList.remove('border-pink-500', 'bg-pink-950/20');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                processUploadedImage(e.dataTransfer.files[0]);
+            }
+        }
+
+        function handleImageUpload(e) {
+            if (e.target.files && e.target.files[0]) {
+                processUploadedImage(e.target.files[0]);
+            }
+        }
+
+        /**
+         * Reads image file onto canvas, samples pixel color grid, and decodes English message
+         */
+        function processUploadedImage(file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imgData.data;
+
+                    // Grid detection params
+                    const tileSize = 40;
+                    const gap = 6;
+                    const margin = 24;
+                    const topOffset = margin + 20;
+
+                    let decodedText = '';
+                    let hexSeq = [];
+
+                    // Scan grid blocks
+                    for (let y = topOffset; y < canvas.height - margin; y += (tileSize + gap)) {
+                        for (let x = margin; x < canvas.width - margin; x += (tileSize + gap)) {
+                            // Sample color at block center
+                            const sampleX = Math.floor(x + tileSize / 2);
+                            const sampleY = Math.floor(y + tileSize / 2);
+
+                            if (sampleX < canvas.width && sampleY < canvas.height) {
+                                const index = (sampleY * canvas.width + sampleX) * 4;
+                                const r = data[index];
+                                const g = data[index + 1];
+                                const b = data[index + 2];
+                                const a = data[index + 3];
+
+                                // Skip dark background pixels
+                                if (a < 100 || (r < 20 && g < 30 && b < 45)) continue;
+
+                                const closestChar = findClosestCharFromRgb(r, g, b);
+                                const hex = `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+
+                                decodedText += closestChar;
+                                hexSeq.push(hex);
+                            }
+                        }
+                    }
+
+                    if (decodedText.length > 0) {
+                        document.getElementById('decrypted-output').innerText = decodedText;
+                        document.getElementById('decrypt-hex-input').value = hexSeq.join(' ');
+                        showToast(`Успешно распознано ${decodedText.length} символов из изображения!`);
+                    } else {
+                        showToast('Не удалось извлечь цветовой код. Проверьте изображение.', 'warning');
+                    }
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        /* ==========================================================================
+           6. INTERACTIVE KEYBOARD & ALPHABET PALETTE
+           ========================================================================== */
+
+        function initQuickKeyboard() {
+            const container = document.getElementById('quick-color-keyboard');
+            container.innerHTML = '';
+
+            COLOR_DATABASE.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-mono font-bold transition-all hover:scale-125 border border-black/20 shadow';
+                btn.style.backgroundColor = item.hex;
+                
+                const rgb = item.rgb;
+                const brightness = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
+                btn.style.color = brightness > 128 ? '#0f172a' : '#ffffff';
+                
+                btn.innerText = item.char === ' ' ? '␣' : item.char;
+                btn.title = `'${item.displayLabel}' | ${item.hex}`;
+
+                btn.onclick = () => {
+                    const hexInput = document.getElementById('decrypt-hex-input');
+                    hexInput.value += (hexInput.value ? ' ' : '') + item.hex;
+                    updateDecryptionFromHex();
+                };
+
+                container.appendChild(btn);
+            });
+        }
+
+        function renderAlphabetPalette(filter = '') {
+            const grid = document.getElementById('alphabet-grid');
+            grid.innerHTML = '';
+
+            const filtered = COLOR_DATABASE.filter(item => {
+                return item.char.toLowerCase().includes(filter.toLowerCase()) ||
+                       item.displayLabel.toLowerCase().includes(filter.toLowerCase()) ||
+                       item.hex.toLowerCase().includes(filter.toLowerCase());
+            });
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'glass-panel p-3 rounded-2xl border border-slate-800 flex items-center gap-3 hover:border-slate-700 transition-all cursor-pointer group';
+                
+                const swatch = document.createElement('div');
+                swatch.className = 'w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-mono font-bold text-xs shadow-md group-hover:scale-105 transition-transform';
+                swatch.style.backgroundColor = item.hex;
+                const brightness = (item.rgb[0] * 299 + item.rgb[1] * 587 + item.rgb[2] * 114) / 1000;
+                swatch.style.color = brightness > 128 ? '#0f172a' : '#ffffff';
+                swatch.innerText = item.char === ' ' ? '␣' : item.char;
+
+                const details = document.createElement('div');
+                details.className = 'overflow-hidden';
+                details.innerHTML = `
+                    <div class="text-xs font-bold text-slate-200 truncate">${item.displayLabel}</div>
+                    <div class="text-[10px] font-mono text-indigo-400 uppercase">${item.hex}</div>
+                `;
+
+                card.appendChild(swatch);
+                card.appendChild(details);
+
+                card.onclick = () => {
+                    copyToClipboard(item.hex);
+                    showToast(`Скопирован HEX для '${item.displayLabel}': ${item.hex}`);
+                };
+
+                grid.appendChild(card);
+            });
+        }
+
+        function filterPalette() {
+            const val = document.getElementById('palette-search').value;
+            renderAlphabetPalette(val);
+        }
+
+        /* ==========================================================================
+           7. TAB SWITCHING & TOAST SYSTEM
+           ========================================================================== */
+
+        function switchTab(tabName) {
+            state.activeTab = tabName;
+            
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            // Show target
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}-btn`).classList.add('active');
+        }
+
+        function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text);
+            } else {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const icon = type === 'warning' ? 'fa-triangle-exclamation text-amber-400' : 'fa-circle-check text-emerald-400';
+            
+            toast.className = 'glass-panel px-4 py-3 rounded-2xl shadow-2xl text-xs font-medium text-slate-200 flex items-center gap-2 border border-slate-700/80 animate-bounce-in';
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.4s ease';
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        /* Initialization on Window Load */
+        window.onload = function() {
+            initQuickKeyboard();
+            renderAlphabetPalette();
+            // Set initial default preset text
+            setPreset('Hello World!');
+        };
+    </script>
+</body>
+</html>
